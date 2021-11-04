@@ -39,7 +39,7 @@ def create_df(name):
     df = pd.read_csv(name, sep=';', index_col=0)
     # columns = df.columns
     # for col in columns:
-    #     # temp_list = df.columns[col].split(' ')
+    #     temp_list = df.columns[col].split(' ')
     #     col_list = col.split()
     #     if not col_list[-5] in look_for_code.keys():
     #         continue
