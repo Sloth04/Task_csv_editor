@@ -29,33 +29,43 @@ def find_and_save(df, target_dic, target_type):
     return df_re
 
 
-def unite(list_df):
-    united_df = pd.concat(list_df)
-    # print(united_df)
-    return united_df
-
-
 def create_df(name):
     df = pd.read_csv(name, sep=';', index_col=0)
-    # columns = df.columns
-    # for col in columns:
-    #     temp_list = df.columns[col].split(' ')
-    #     col_list = col.split()
-    #     if not col_list[-5] in look_for_code.keys():
-    #         continue
-    #     elif look_for_type in col_list:
-    #         continue
-    #     version = int(col_list[-1])
-    #     if target_type in temp_list:
-    #         df_re = pd.concat([df_re, df[df.columns[item]]], axis=1)
-    #         df_re.rename(columns={df_re.columns[step]: temp_list[2] + ' ' + temp_list[3]}, inplace=True)
     df.index.name = 'Date'
     df.sort_index(axis=1)
     df.index = df.index.map(lambda x: str(x)[:-8])
     df.index = pd.to_datetime(df.index)
     df = df.groupby(pd.Grouper(freq='H')).mean()
-    # print(df)
-    return df
+    columns = df.columns
+    df_re = pd.DataFrame()
+    ver = dict.fromkeys(look_for_code.keys())
+    ver_i = dict.fromkeys(look_for_code.keys())
+    for item in ver.keys():
+        ver[item] = 0
+        ver_i[item] = 0
+    item = 0
+    for col in columns:
+        item += 1
+        col_list = col.split()
+        if look_for_type not in col_list:
+            continue
+        elif not col_list[col_list.index(look_for_type) - 1] in look_for_code.keys():
+            continue
+        wc = col_list[col_list.index(look_for_type) - 1]
+        if float(col_list[-1]) > float(ver.get(wc)):
+            ver.update({wc: col_list[-1]})
+            ver_i.update({wc: item})
+        # print(df_re)
+    added = 0
+    for i in ver_i.keys():
+        df_re = pd.concat([df_re, df[df.columns[ver_i.get(i)-1]]], axis=1)
+        df_re.rename(columns={df_re.columns[added]: i + ' ' + look_for_code[i]}, inplace=True)
+        added += 1
+    df_re.fillna(0, inplace=True)
+    df_re.replace(np.nan, 0, regex=True, inplace=True)
+    # print(ver)
+    # print(ver_i)
+    return df_re
 
 
 def main():
@@ -67,10 +77,11 @@ def main():
     for item in dir_list:
         name_df = create_df(item)
         list_csv.append(name_df)
-    # print(list_csv)
-    united_df = unite(list_csv)
-    selected_df = find_and_save(united_df, look_for_code, look_for_type)
-    # selected_df.to_csv('output_result.csv', sep=';')
+    united_df = pd.concat(list_csv)
+    # print(united_df)
+    # print(united_df)
+    # selected_df = find_and_save(united_df, look_for_code, look_for_type)
+    united_df.to_csv('output_result.csv', sep=';')
     # selected_df.to_excel('output_result.xlsx')
 
 
