@@ -2,14 +2,13 @@ import os
 import pandas as pd
 from glob import glob
 import numpy as np
+import re
 
-look_for_code = {'62W4960182644872': 'Канівська ГЕС', '62W8027183829970': 'Кременчуцька ГЕС',
-                 '62W578426156126U': 'Дніпро-1 ГЕС', '62W380785590623K': 'Дніпро-2 ГЕС',
-                 '62W8116841028205': 'Каховська ГЕС', '62W3963431638476': 'Середньодніпровська ГЕС',
-                 '62W1502413906970': 'Київська ГЕС', '62W601196275466X': 'Курахівська ТЕС',
-                 '62W909789678127W': 'Запорізька ТЕС', '62W29095992560BC': 'Бурштинська ТЕС (Бурштин)',
-                 '62W4203004736348': 'ХТЕЦ-5'}
-look_for_type = 'A01'
+look_for_code = {'62W1502413906970': 'KYIVHPP', '62W4960182644872': 'KANIVHPP', '62W8027183829970': 'KREMHPP',
+                 '62W3963431638476': 'SEREDHPP', '62W578426156126U': 'DNIP1HPP', '62W380785590623K': 'DNIP2HPP',
+                 '62W8116841028205': 'KAKHHPP', '62W29095992560BC': 'BURSHTPP-BEI', '62W601196275466X': 'KURTPP',
+                 '62W909789678127W': 'ZAPTPP', '62W4203004736348': 'KHAR5CHPP'}
+look_for_type = ['A01']
 
 
 def create_df(name):
@@ -21,23 +20,29 @@ def create_df(name):
     df = df.groupby(pd.Grouper(freq='H')).mean()
     columns = df.columns
     df_re = pd.DataFrame()
-    ver = dict.fromkeys(look_for_code.keys())
+    ver_d = dict.fromkeys(look_for_code.keys())
     ver_i = dict.fromkeys(look_for_code.keys())
-    for item in ver.keys():
-        ver[item] = 0
-        ver_i[item] = 0
+    code_reg = r"\w{2}[W]+\w{13}"
+    type_reg = r"[A]+\d{2}"
+    ver_reg = r"\d+.\d+$"
+    for i in ver_d.keys():
+        ver_d[i] = 0
+        ver_i[i] = 0
     item = 0
     for col in columns:
         item += 1
-        col_list = col.split()
-        if look_for_type not in col_list:
+        found_code = re.findall(code_reg, col)
+        found_type = re.findall(type_reg, col)
+        found_ver = re.findall(ver_reg, col)
+        if not found_code or not found_type or not found_ver:
             continue
-        elif not col_list[col_list.index(look_for_type) - 1] in look_for_code.keys():
+        if found_type[0] not in look_for_type:
             continue
-        wc = col_list[col_list.index(look_for_type) - 1]
-        if float(col_list[-1]) > float(ver.get(wc)):
-            ver.update({wc: col_list[-1]})
-            ver_i.update({wc: item})
+        elif not found_code[0] in look_for_code.keys():
+            continue
+        if float(found_ver[0]) > float(ver_d.get(found_code[0])):
+            ver_d.update({found_code[0]: found_ver[0]})
+            ver_i.update({found_code[0]: item})
     added = 0
     for i in ver_i.keys():
         df_re = pd.concat([df_re, df[df.columns[ver_i.get(i)-1]]], axis=1)
@@ -45,6 +50,7 @@ def create_df(name):
         added += 1
     df_re.fillna(0, inplace=True)
     df_re.replace(np.nan, 0, regex=True, inplace=True)
+    # print(df_re)
     return df_re
 
 
@@ -58,6 +64,7 @@ def main():
         name_df = create_df(item)
         list_csv.append(name_df)
     united_df = pd.concat(list_csv)
+    # print(united_df)
     united_df.to_csv('output_result.csv', sep=';')
 
 
